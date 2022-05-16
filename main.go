@@ -4,7 +4,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os/exec"
 )
-
+//https://github.com/seal0207/Port-traffic-statistics/blob/main/Port-.sh
+//https://github.com/dominikh/simple-router/blob/92e945cdbf054d28b31f3906423ff08265ca4837/traffic/statistics.go
 func main() {
 	tool := PortTrafficStatistics{}
 	if err := tool.addPort([]string{"2348", "8086"}); err != nil {
@@ -25,75 +26,95 @@ type PortTrafficStatistics struct {
 }
 
 func (p *PortTrafficStatistics) addPort(ports []string) error {
+	log.Infof("添加端口流量统计规则：%+v ", ports)
 	for _, port := range ports {
-		inTcp, err := exec.Command("iptables", "-I", "INPUT", "-p", "tcp", "--dport", port).Output()
+		//iptables -I INPUT -p tcp --dport $ports
+		_, err := exec.Command("iptables", "-I", "INPUT", "-p", "tcp", "--dport", port).Output()
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		log.Infof("%+v", inTcp)
-		inUdp, err := exec.Command("iptables", "-I", "INPUT", "-p", "udp", "--dport", port).Output()
+		log.Infof("success: iptables -I INPUT -p tcp --dport %+v ", port)
+		//iptables -I INPUT -p udp --dport $ports
+		_, err = exec.Command("iptables", "-I", "INPUT", "-p", "udp", "--dport", port).Output()
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		log.Infof("%+v", inUdp)
-		outTcp, err := exec.Command("iptables", "-I", "OUTPUT", "-p", "tcp", "--sport", port).Output()
+		log.Infof("success: iptables -I INPUT -p udp --dport %+v ", port)
+		//iptables -I OUTPUT -p tcp --sport $ports
+		_, err = exec.Command("iptables", "-I", "OUTPUT", "-p", "tcp", "--sport", port).Output()
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		log.Infof("%+v", outTcp)
-		outUdp, err := exec.Command("iptables", "-I", "OUTPUT", "-p", "udp", "--sport", port).Output()
+		log.Infof("success: iptables -I OUTPUT -p tcp --sport %+v ", port)
+		//iptables -I OUTPUT -p udp --sport $ports
+		_, err = exec.Command("iptables", "-I", "OUTPUT", "-p", "udp", "--sport", port).Output()
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		log.Infof("%+v", outUdp)
+		log.Infof("success: iptables -I OUTPUT -p udp --sport  %+v ", port)
 	}
 	return nil
 }
 
 func (p *PortTrafficStatistics) deletePort(ports []string) error {
+	log.Infof("删除流量统计规则: %+v ", ports)
 	for _, port := range ports {
 		//iptables -D INPUT -p tcp --dport $ports
-		inTcp, err := exec.Command("iptables", "-D", "INPUT", "-p", "tcp", "--dport", port).Output()
+		_, err := exec.Command("iptables", "-D", "INPUT", "-p", "tcp", "--dport", port).Output()
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		log.Infof("%+v", inTcp)
+		log.Infof("success: iptables -D INPUT -p tcp --dport  %+v ", port)
 		//iptables -D INPUT -p udp --dport $ports
-		inUdp, err := exec.Command("iptables", "-D", "INPUT", "-p", "udp", "--dport", port).Output()
+		_, err = exec.Command("iptables", "-D", "INPUT", "-p", "udp", "--dport", port).Output()
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		log.Infof("%+v", inUdp)
+		log.Infof("success: iptables -D INPUT -p udp --dport  %+v ", port)
 		//iptables -D OUTPUT -p tcp --sport $ports
-		outTcp, err := exec.Command("iptables", "-D", "OUTPUT", "-p", "tcp", "--sport", port).Output()
+		_, err = exec.Command("iptables", "-D", "OUTPUT", "-p", "tcp", "--sport", port).Output()
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		log.Infof("%+v", outTcp)
+		log.Infof("success: iptables -D OUTPUT -p tcp --sport  %+v ", port)
 		//iptables -D OUTPUT -p udp --sport $ports
-		outUcp, err := exec.Command("iptables", "-D", "OUTPUT", "-p", "udp", "--sport", port).Output()
+		_, err = exec.Command("iptables", "-D", "OUTPUT", "-p", "udp", "--sport", port).Output()
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		log.Infof("%+v", outUcp)
+		log.Infof("success: iptables -D OUTPUT -p udp --sport  %+v ", port)
 	}
 	return nil
 }
-
-func (p *PortTrafficStatistics) clearAll() error {
-	output, err := exec.Command("iptables", "-Z").Output()
+//iptables 计数清空
+func (p *PortTrafficStatistics) reCount() error {
+	log.Info("重置流量统计计数")
+	_, err := exec.Command("iptables", "-Z").Output()
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-	log.Infof("%+v", output)
 	return nil
+}
+//清除所有规则
+func (p *PortTrafficStatistics) clearAll() error {
+	log.Info("清理所有iptables规则")
+	_, err := exec.Command("iptables", "-F").Output()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (p *PortTrafficStatistics)readStatistics () {
+
 }
