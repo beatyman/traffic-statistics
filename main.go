@@ -219,6 +219,7 @@ func (p *PortTrafficStatistics) ParseStat(stat []string) (parsed Stat, err error
 	if len(stat) < 10 {
 		return parsed, fmt.Errorf("stat contained fewer fields than expected")
 	}
+	log.Infof("%+v",stat)
 	// Convert the fields that are not plain strings
 	parsed.Packets, err = strconv.ParseUint(stat[0], 0, 64)
 	if err != nil {
