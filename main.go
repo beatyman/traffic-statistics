@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/coreos/go-iptables/iptables"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -135,6 +136,15 @@ func (p *PortTrafficStatistics)readStatistics () {
 	if err != nil {
 		return
 	}
+	iptablesObject, err := iptables.New()
+	if err != nil {
+		return
+	}
+	rules, err := iptablesObject.List("filter", "INPUT")
+	if err != nil {
+		return
+	}
+	log.Infof("%+v ",rules[1:])
 }
 
 
