@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //https://github.com/seal0207/Port-traffic-statistics/blob/main/Port-.sh
@@ -17,6 +18,8 @@ type ReportNetStatistics struct {
 	HostId           string     `json:"host_id"`
 	PortTraffic      []*Stat    `json:"port_traffic"`
 	InterfaceTraffic []VNResult `json:"interface_traffic"`
+	Version          string     `json:"version"`
+	TimeStamp        int64      `json:"time_stamp"`
 }
 
 func main() {
@@ -34,6 +37,8 @@ func main() {
 		InterfaceTraffic: []VNResult{
 			data,
 		},
+		Version: "0.0.0",
+		TimeStamp: time.Now().Unix(),
 	}
 	bytesNet, _ := json.Marshal(report)
 	log.Infof("%+v", string(bytesNet))
