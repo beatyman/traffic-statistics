@@ -2,10 +2,12 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/coreos/go-iptables/iptables"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -136,7 +138,7 @@ func (p *PortTrafficStatistics)readStatistics () {
 	if err != nil {
 		return
 	}
-
+	parseIptablesRule(data)
 	log.Info("22222 =========================================================================")
 	iptablesObject, err := iptables.New()
 	if err != nil {
@@ -179,7 +181,10 @@ var errParse = errors.New("Cannot parse iptables list information")
 var chainNameRe = regexp.MustCompile(`^Chain\s+(\S+)`)
 var fieldsHeaderRe = regexp.MustCompile(`^\s*pkts\s+bytes\s+target`)
 var valuesRe = regexp.MustCompile(`^\s*([0-9]+)\s+([0-9]+)\s+.*?(/\*\s(.*)\s\*/)?$`)
-
+var iptablesRuleFieldSeparator = regexp.MustCompile("[[:blank:]]+")
+var iptablesRuleDPortRegexp = regexp.MustCompile(`(tcp|udp) dpts?:(?P<minPort>\d+)(:(?P<maxPort>\d+))?`)
+var iptablesRuleStateRegexp = regexp.MustCompile(`state [[:alpha:]]+(,[[:alpha:]]+)*`)
+var iptablesRuleStatsInfoRegexp = regexp.MustCompile(`^ ?\d+[A-Z]? \d+[A-Z]? `)
 
 func (p *PortTrafficStatistics) parse(data string) error {
 	lines := strings.Split(data, "\n")
@@ -209,4 +214,60 @@ func (p *PortTrafficStatistics) parse(data string) error {
 		log.Infof("%+v, pkts: %+v , bytes: %+v , target: %+v, comment:%+v ",matches[0],pkts,bytes,target,comment)*/
 	}
 	return nil
+}
+func parseRuleDPorts(r string) ([2]int, error) {
+	match := iptablesRuleDPortRegexp.FindStringSubmatch(r)
+	dports := [2]int{0, 0}
+	for i, name := range iptablesRuleDPortRegexp.SubexpNames() {
+		var err error
+		switch name {
+		case "minPort":
+			dports[0], err = strconv.Atoi(match[i])
+			if err != nil {
+				return dports, fmt.Errorf("rule '%s' has invalid destination %s specification '%s'", r, name, match[i])
+			}
+		case "maxPort":
+			dports[1], _ = strconv.Atoi(match[i])
+			if err != nil {
+				dports[1] = 0
+			}
+		default:
+		}
+	}
+	if dports[1] == 0 {
+		dports[1] = dports[0]
+	}
+	return dports, nil
+}
+func parseIptablesRule(r string) (error) {
+	r = iptablesRuleFieldSeparator.ReplaceAllLiteralString(r, " ")
+	r = iptablesRuleStatsInfoRegexp.ReplaceAllLiteralString(r, "")
+	fields := iptablesRuleFieldSeparator.Split(r, 8)
+	if len(fields) < 8 {
+		return fmt.Errorf("rule '%s' has too few fields", r)
+	}
+	matchString := iptablesRuleStateRegexp.FindString(r)
+	if len(matchString) > 0 { //state condition, we ignore it
+		return nil
+	}
+	if fields[3] == "lo" { // incoming interface is localhost
+		return nil
+	}
+	return parseRule(r, fields[0], fields[1], fields[5])
+}
+
+func parseRule(r, target, protocol, source string) error {
+	var dports [2]int
+	var err error
+	matchString := iptablesRuleDPortRegexp.FindString(r)
+	if len(matchString) == 0 {
+		dports = [2]int{1, 65535}
+	} else {
+		dports, err = parseRuleDPorts(r)
+		if err != nil {
+			return  err
+		}
+	}
+	log.Infof("Target: %+v , Protocol: %+v ,Source: %+v Dports: %+v ",target,protocol,source,dports)
+	return  nil
 }
