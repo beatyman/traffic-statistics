@@ -244,6 +244,7 @@ func (p *PortTrafficStatistics) ParseStat(stat []string) (parsed Stat, err error
 	return parsed, nil
 }
 func parseRuleDPorts(r string) ([2]int, error) {
+	log.Infof("r: %+v",r)
 	match := iptablesRuleDPortRegexp.FindStringSubmatch(r)
 	dports := [2]int{0, 0}
 	for i, name := range iptablesRuleDPortRegexp.SubexpNames() {
