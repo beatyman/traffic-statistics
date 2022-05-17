@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
@@ -14,7 +15,9 @@ import (
 func main() {
 	tool := PortTrafficStatistics{}
 	tool.readStatistics()
-	log.Infof("%+v",VN("enp8s0"))
+	data:=VN("enp8s0")
+	bytesNet,_:=json.Marshal(data)
+	log.Infof("%+v",string(bytesNet))
 	time.Sleep(time.Minute)
 	tool.readStatistics()
 	time.Sleep(time.Minute)
