@@ -137,7 +137,7 @@ func (p *PortTrafficStatistics)readStatistics () {
 		return
 	}
 
-	log.Info("=========================================================================")
+	log.Info("22222 =========================================================================")
 	iptablesObject, err := iptables.New()
 	if err != nil {
 		log.Error(err)
@@ -155,7 +155,7 @@ func (p *PortTrafficStatistics)readStatistics () {
 		return
 	}
 	log.Infof("%+v ",stats)
-	log.Info("=========================================================================")
+	log.Info("33333 =========================================================================")
 }
 
 
@@ -200,12 +200,13 @@ func (p *PortTrafficStatistics) parse(data string) error {
 			log.Infof("%+v",matches)
 			continue
 		}
-		log.Info("=========================================================================")
+		log.Infof("1111: %+v",matches)
+/*		log.Info("=========================================================================")
 		pkts := matches[1]
 		bytes := matches[2]
 		target := matches[3]
 		comment := matches[4]
-		log.Infof("%+v, pkts: %+v , bytes: %+v , target: %+v, comment:%+v ",matches[0],pkts,bytes,target,comment)
+		log.Infof("%+v, pkts: %+v , bytes: %+v , target: %+v, comment:%+v ",matches[0],pkts,bytes,target,comment)*/
 	}
 	return nil
 }
