@@ -172,6 +172,7 @@ func (p *PortTrafficStatistics) parse(data string) error {
 		return errParse
 	}
 	for _, line := range lines[2:] {
+		log.Infof("%+v",line)
 		matches := valuesRe.FindStringSubmatch(line)
 		if len(matches) != 5 {
 			log.Infof("%+v",matches)
