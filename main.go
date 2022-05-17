@@ -206,7 +206,11 @@ func (p *PortTrafficStatistics) parse(data string) error {
 	}
 	for _, line := range lines[2:] {
 		fields:=strings.Fields(line)
-		log.Infof("%+v ,len: %+v",fields,len(fields))
+		sts,err:=p.ParseStat(fields)
+		if err!=nil{
+			return errParse
+		}
+		log.Infof("sts :   %+v",sts)
 	}
 	return nil
 }
