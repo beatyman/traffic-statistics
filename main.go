@@ -1,13 +1,19 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"os"
 	"os/exec"
+	"os/signal"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 )
 
@@ -22,7 +28,26 @@ type ReportNetStatistics struct {
 	TimeStamp        int64      `json:"time_stamp"`
 }
 
-func main() {
+
+func Startup(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+	log.Info("health daemon startup")
+	getAgentStat(time.Now())
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case t := <-ticker.C:
+			{
+				getAgentStat(t)
+			}
+		}
+	}
+}
+
+func getAgentStat(now time.Time) {
 	tool := PortTrafficStatistics{}
 	ports, _ := tool.readStatistics()
 	cmd := exec.Command("vnstat", "--help")
@@ -42,18 +67,67 @@ func main() {
 	}
 	bytesNet, _ := json.Marshal(report)
 	log.Infof("%+v", string(bytesNet))
-	/*	if err := tool.addPort([]string{"2348", "8086"}); err != nil {
+}
+//安装流量收集工具
+func init() {
+	if err:=checkVnstat();err!=nil{
+		if err := aptUpdate(); err != nil {
 			log.Error(err)
-			return
 		}
-		if err := tool.deletePort([]string{"2348"}); err != nil {
+		if err := aptInstall("vnstat"); err != nil {
 			log.Error(err)
-			return
 		}
-		if err := tool.clearAll(); err != nil {
-			log.Error(err)
-			return
-		}*/
+	}
+}
+
+
+func aptInstall(pkg string) error {
+	cmd := exec.Command("apt-get", "install", "-y", pkg)
+	log.Debugf("running command: %s", cmd)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		return errors.Wrapf(err, "failed to update %s", pkg)
+	}
+	return nil
+}
+
+func aptUpdate() error {
+	cmd := exec.Command("apt-get", "update")
+	log.Debugf("running command: %s", cmd)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		return errors.Wrapf(err, "failed to update metadata")
+	}
+	return nil
+}
+func checkVnstat() error {
+	cmd := exec.Command("vnstat", "-v")
+	log.Debugf("running command: %s", cmd)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		return errors.Wrapf(err, "vnstat not found")
+	}
+	return nil
+}
+func main() {
+	wg := &sync.WaitGroup{}
+	log.Info("++++++++++++++++++++++++++++++running++++++++++++++++++++++++++++++")
+	wg.Add(3)
+	agentCtx:=context.TODO()
+	go Startup(agentCtx, wg)
+	go func() {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGTERM)
+		<-sigs
+		agentCtx.Done()
+	}()
+	wg.Wait()
 }
 
 // Stat represents a structured statistic entry.

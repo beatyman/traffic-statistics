@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/levigross/grequests v0.0.0-20190908174114-253788527a1a
+	github.com/pkg/errors v0.9.1
 	github.com/shirou/gopsutil/v3 v3.22.4
 	github.com/sirupsen/logrus v1.8.1
 )
