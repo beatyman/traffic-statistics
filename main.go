@@ -1,9 +1,7 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"github.com/coreos/go-iptables/iptables"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
 	"regexp"
@@ -142,29 +140,12 @@ func (p *PortTrafficStatistics)readStatistics () {
 		log.Error(err)
 		return
 	}
-	err = p.parse(data)
-	if err != nil {
-		return
-	}
-	iptablesObject, err := iptables.New()
+	stats,err:=p.ParseStat(data)
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	data1,err:=iptablesObject.Stats("filter", "INPUT")
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	log.Infof("%+v ",data1)
-	for _,d:=range data1{
-		sts,err:=p.ParseStat(d)
-		if err != nil {
-			log.Error(err)
-		}else {
-			log.Infof("%+v",sts)
-		}
-	}
+	log.Infof("%+v",stats)
 }
 
 
@@ -181,58 +162,49 @@ func (p *PortTrafficStatistics) chainList(table, chain string) (string, error) {
 	out, err := c.Output()
 	return string(out), err
 }
-
-
-var errParse = errors.New("Cannot parse iptables list information")
 var chainNameRe = regexp.MustCompile(`^Chain\s+(\S+)`)
-var fieldsHeaderRe = regexp.MustCompile(`^\s*pkts\s+bytes\s+target`)
-var valuesRe = regexp.MustCompile(`^\s*([0-9]+)\s+([0-9]+)\s+.*?(/\*\s(.*)\s\*/)?$`)
-var iptablesRuleFieldSeparator = regexp.MustCompile("[[:blank:]]+")
-var iptablesRuleDPortRegexp = regexp.MustCompile(`(tcp|udp) dpts?:(?P<minPort>\d+)(:(?P<maxPort>\d+))?`)
-var iptablesRuleStateRegexp = regexp.MustCompile(`state [[:alpha:]]+(,[[:alpha:]]+)*`)
-var iptablesRuleStatsInfoRegexp = regexp.MustCompile(`^ ?\d+[A-Z]? \d+[A-Z]? `)
-
-func (p *PortTrafficStatistics) parse(data string) error {
+var fieldsHeaderRe = regexp.MustCompile(`^\s*pkts\s+bytes\s+`)
+// pkts      bytes target     prot opt in     out     source               destination
+func (p *PortTrafficStatistics) ParseStat(data string) ( []*Stat,  error) {
+	stats := make([]*Stat, 0)
 	lines := strings.Split(data, "\n")
 	if len(lines) < 3 {
-		return nil
+		return nil, fmt.Errorf("annot parse iptables list information %+v", lines)
 	}
 	mchain := chainNameRe.FindStringSubmatch(lines[0])
 	if mchain == nil {
-		return errParse
+		return nil, fmt.Errorf("annot parse iptables list information %+v", lines)
 	}
 	if !fieldsHeaderRe.MatchString(lines[1]) {
-		return errParse
+		return nil, fmt.Errorf("annot parse iptables list information %+v", lines)
 	}
+	var err error
 	for _, line := range lines[2:] {
-		fields:=strings.Fields(line)
-		sts,err:=p.ParseStat(fields)
-		if err!=nil{
-			return errParse
+		stat := strings.Fields(line)
+		if len(stat) < 10 {
+			log.Errorf("annot parse iptables list information %+v", stat)
+			continue
 		}
-		log.Infof("sts :   %+v",sts)
+		lStat := new(Stat)
+		// Convert the fields that are not plain strings
+		lStat.Packets, err= strconv.ParseUint(stat[0], 0, 64)
+		if err != nil {
+			log.Errorf("annot parse iptables list information %+v", stat)
+			continue
+		}
+		lStat.Bytes, err = strconv.ParseUint(stat[1], 0, 64)
+		if err != nil {
+			log.Errorf("annot parse iptables list information %+v", stat)
+			continue
+		}
+		lStat.Protocol = stat[2]
+		dports := strings.Split(stat[9], ":")
+		if len(dports) != 2 {
+			log.Errorf("annot parse iptables list information %+v", stat)
+			continue
+		}
+		lStat.Port = dports[1]
+		stats=append(stats,lStat)
 	}
-	return nil
-}
-// pkts      bytes target     prot opt in     out     source               destination
-func (p *PortTrafficStatistics) ParseStat(stat []string) (parsed Stat, err error) {
-	if len(stat) < 10 {
-		return parsed, fmt.Errorf("stat contained fewer fields than expected")
-	}
-	// Convert the fields that are not plain strings
-	parsed.Packets, err = strconv.ParseUint(stat[0], 0, 64)
-	if err != nil {
-		return parsed, fmt.Errorf(err.Error(), "could not parse packets")
-	}
-	parsed.Bytes, err = strconv.ParseUint(stat[1], 0, 64)
-	if err != nil {
-		return parsed, fmt.Errorf(err.Error(), "could not parse bytes")
-	}
-	parsed.Protocol = stat[2]
-	dports:=strings.Split(stat[9],":")
-	if len(dports)!=2{
-		return parsed, fmt.Errorf(err.Error(), "could not parse port")
-	}
-	parsed.Port=dports[1]
-	return parsed, nil
+	return stats,nil
 }
