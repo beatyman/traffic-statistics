@@ -231,14 +231,9 @@ func (p *PortTrafficStatistics) ParseStat(stat []string) (parsed Stat, err error
 	}
 	parsed.Protocol = stat[2]
 	var dports [2]int
-	matchString := iptablesRuleDPortRegexp.FindString(stat[9])
-	if len(matchString) == 0 {
-		dports = [2]int{1, 65535}
-	} else {
-		dports, err = parseRuleDPorts(stat[9])
-		if err != nil {
-			return  parsed,err
-		}
+	dports, err = parseRuleDPorts(stat[9])
+	if err != nil {
+		return  parsed,err
 	}
 	parsed.Port=strconv.Itoa(dports[1])
 	return parsed, nil
