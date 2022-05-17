@@ -219,7 +219,6 @@ func (p *PortTrafficStatistics) ParseStat(stat []string) (parsed Stat, err error
 	if len(stat) < 10 {
 		return parsed, fmt.Errorf("stat contained fewer fields than expected")
 	}
-	log.Infof("%+v",stat)
 	// Convert the fields that are not plain strings
 	parsed.Packets, err = strconv.ParseUint(stat[0], 0, 64)
 	if err != nil {
@@ -230,36 +229,10 @@ func (p *PortTrafficStatistics) ParseStat(stat []string) (parsed Stat, err error
 		return parsed, fmt.Errorf(err.Error(), "could not parse bytes")
 	}
 	parsed.Protocol = stat[2]
-	var dports [2]int
-	dports, err = parseRuleDPorts(stat[9])
-	if err != nil {
-		return  parsed,err
+	dports:=strings.Split(stat[9],":")
+	if len(dports)!=2{
+		return parsed, fmt.Errorf(err.Error(), "could not parse port")
 	}
-	parsed.Port=strconv.Itoa(dports[1])
+	parsed.Port=dports[1]
 	return parsed, nil
-}
-func parseRuleDPorts(r string) ([2]int, error) {
-	log.Infof("r: %+v",r)
-	match := iptablesRuleDPortRegexp.FindStringSubmatch(r)
-	dports := [2]int{0, 0}
-	for i, name := range iptablesRuleDPortRegexp.SubexpNames() {
-		var err error
-		switch name {
-		case "minPort":
-			dports[0], err = strconv.Atoi(match[i])
-			if err != nil {
-				return dports, fmt.Errorf("rule '%s' has invalid destination %s specification '%s'", r, name, match[i])
-			}
-		case "maxPort":
-			dports[1], _ = strconv.Atoi(match[i])
-			if err != nil {
-				dports[1] = 0
-			}
-		default:
-		}
-	}
-	if dports[1] == 0 {
-		dports[1] = dports[0]
-	}
-	return dports, nil
 }
