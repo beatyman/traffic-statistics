@@ -34,9 +34,9 @@ func main() {
 
 // Stat represents a structured statistic entry.
 type Stat struct {
-	Packets     uint64     `json:"pkts"`
+	Packets     uint64     `json:"packets"`
 	Bytes       uint64     `json:"bytes"`
-	Protocol    string     `json:"prot"`
+	Protocol    string     `json:"protocol"`
 	Port        string     `json:"port"`
 }
 
