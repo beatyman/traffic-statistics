@@ -39,14 +39,8 @@ func main() {
 type Stat struct {
 	Packets     uint64     `json:"pkts"`
 	Bytes       uint64     `json:"bytes"`
-	Target      string     `json:"target"`
 	Protocol    string     `json:"prot"`
-	Opt         string     `json:"opt"`
-	Input       string     `json:"in"`
-	Output      string     `json:"out"`
-	Source      *net.IPNet `json:"source"`
-	Destination *net.IPNet `json:"destination"`
-	Options     string     `json:"options"`
+	Port        string     `json:"port"`
 }
 
 type PortTrafficStatistics struct {
@@ -189,7 +183,6 @@ func (p *PortTrafficStatistics) chainList(table, chain string) (string, error) {
 	return string(out), err
 }
 
-const measurement = "iptables"
 
 var errParse = errors.New("Cannot parse iptables list information")
 var chainNameRe = regexp.MustCompile(`^Chain\s+(\S+)`)
@@ -218,70 +211,11 @@ func (p *PortTrafficStatistics) parse(data string) error {
 	}
 	return nil
 }
-func parseRuleDPorts(r string) ([2]int, error) {
-	match := iptablesRuleDPortRegexp.FindStringSubmatch(r)
-	dports := [2]int{0, 0}
-	for i, name := range iptablesRuleDPortRegexp.SubexpNames() {
-		var err error
-		switch name {
-		case "minPort":
-			dports[0], err = strconv.Atoi(match[i])
-			if err != nil {
-				return dports, fmt.Errorf("rule '%s' has invalid destination %s specification '%s'", r, name, match[i])
-			}
-		case "maxPort":
-			dports[1], _ = strconv.Atoi(match[i])
-			if err != nil {
-				dports[1] = 0
-			}
-		default:
-		}
-	}
-	if dports[1] == 0 {
-		dports[1] = dports[0]
-	}
-	return dports, nil
-}
-func parseIptablesRule(r string) (error) {
-	r = iptablesRuleFieldSeparator.ReplaceAllLiteralString(r, " ")
-	r = iptablesRuleStatsInfoRegexp.ReplaceAllLiteralString(r, "")
-	fields := iptablesRuleFieldSeparator.Split(r, 8)
-	if len(fields) < 8 {
-		return fmt.Errorf("rule '%s' has too few fields", r)
-	}
-	matchString := iptablesRuleStateRegexp.FindString(r)
-	if len(matchString) > 0 { //state condition, we ignore it
-		return nil
-	}
-	if fields[3] == "lo" { // incoming interface is localhost
-		return nil
-	}
-	return parseRule(r, fields[0], fields[1], fields[5])
-}
-
-func parseRule(r, target, protocol, source string) error {
-	var dports [2]int
-	var err error
-	matchString := iptablesRuleDPortRegexp.FindString(r)
-	if len(matchString) == 0 {
-		dports = [2]int{1, 65535}
-	} else {
-		dports, err = parseRuleDPorts(r)
-		if err != nil {
-			return  err
-		}
-	}
-	log.Infof("Target: %+v , Protocol: %+v ,Source: %+v Dports: %+v ",target,protocol,source,dports)
-	return  nil
-}
 // pkts      bytes target     prot opt in     out     source               destination
 func (p *PortTrafficStatistics) ParseStat(stat []string) (parsed Stat, err error) {
-
-	// For forward-compatibility, expect at least 10 fields in the stat
 	if len(stat) < 10 {
 		return parsed, fmt.Errorf("stat contained fewer fields than expected")
 	}
-
 	// Convert the fields that are not plain strings
 	parsed.Packets, err = strconv.ParseUint(stat[0], 0, 64)
 	if err != nil {
@@ -291,22 +225,17 @@ func (p *PortTrafficStatistics) ParseStat(stat []string) (parsed Stat, err error
 	if err != nil {
 		return parsed, fmt.Errorf(err.Error(), "could not parse bytes")
 	}
-/*	_, parsed.Source, err = net.ParseCIDR(stat[7])
-	if err != nil {
-		return parsed, fmt.Errorf(err.Error(), "could not parse source")
+	parsed.Protocol = stat[2]
+	var dports [2]int
+	matchString := iptablesRuleDPortRegexp.FindString(stat[9])
+	if len(matchString) == 0 {
+		dports = [2]int{1, 65535}
+	} else {
+		dports, err = parseRuleDPorts(r)
+		if err != nil {
+			return  parsed,err
+		}
 	}
-	_, parsed.Destination, err = net.ParseCIDR(stat[8])
-	if err != nil {
-		return parsed, fmt.Errorf(err.Error(), "could not parse destination")
-	}*/
-
-	// Put the fields that are strings
-	parsed.Target = stat[2]
-	parsed.Protocol = stat[3]
-	parsed.Opt = stat[4]
-	parsed.Input = stat[5]
-	parsed.Output = stat[6]
-	parsed.Options = stat[9]
-
+	parsed.Port=strconv.Itoa(dports[1])
 	return parsed, nil
 }
