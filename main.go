@@ -8,40 +8,55 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
+
 //https://github.com/seal0207/Port-traffic-statistics/blob/main/Port-.sh
 //https://github.com/dominikh/simple-router/blob/92e945cdbf054d28b31f3906423ff08265ca4837/traffic/statistics.go
+
+type ReportNetStatistics struct {
+	HostId           string     `json:"host_id"`
+	PortTraffic      []*Stat    `json:"port_traffic"`
+	InterfaceTraffic []VNResult `json:"interface_traffic"`
+}
+
 func main() {
 	tool := PortTrafficStatistics{}
-	tool.readStatistics()
-	data:=VN("enp8s0")
-	bytesNet,_:=json.Marshal(data)
-	log.Infof("%+v",string(bytesNet))
-	time.Sleep(time.Minute)
-	tool.readStatistics()
-	time.Sleep(time.Minute)
-	tool.readStatistics()
-/*	if err := tool.addPort([]string{"2348", "8086"}); err != nil {
-		log.Error(err)
-		return
+	ports, _ := tool.readStatistics()
+	cmd := exec.Command("vnstat", "--help")
+	err := cmd.Run()
+	if err != nil {
+		log.Infof("%+v", err)
 	}
-	if err := tool.deletePort([]string{"2348"}); err != nil {
-		log.Error(err)
-		return
+	data := VN("enp8s0")
+	report := ReportNetStatistics{
+		HostId:      "dfd92628e5ff68080335265edf804aea4e6e8df5112464",
+		PortTraffic: ports,
+		InterfaceTraffic: []VNResult{
+			data,
+		},
 	}
-	if err := tool.clearAll(); err != nil {
-		log.Error(err)
-		return
-	}*/
+	bytesNet, _ := json.Marshal(report)
+	log.Infof("%+v", string(bytesNet))
+	/*	if err := tool.addPort([]string{"2348", "8086"}); err != nil {
+			log.Error(err)
+			return
+		}
+		if err := tool.deletePort([]string{"2348"}); err != nil {
+			log.Error(err)
+			return
+		}
+		if err := tool.clearAll(); err != nil {
+			log.Error(err)
+			return
+		}*/
 }
 
 // Stat represents a structured statistic entry.
 type Stat struct {
-	Packets     uint64     `json:"packets"`
-	Bytes       uint64     `json:"bytes"`
-	Protocol    string     `json:"protocol"`
-	Port        string     `json:"port"`
+	Packets  uint64 `json:"packets"`
+	Bytes    uint64 `json:"bytes"`
+	Protocol string `json:"protocol"`
+	Port     string `json:"port"`
 }
 
 type PortTrafficStatistics struct {
@@ -116,6 +131,7 @@ func (p *PortTrafficStatistics) deletePort(ports []string) error {
 	}
 	return nil
 }
+
 //iptables 计数清空
 func (p *PortTrafficStatistics) reCount() error {
 	log.Info("重置流量统计计数")
@@ -126,6 +142,7 @@ func (p *PortTrafficStatistics) reCount() error {
 	}
 	return nil
 }
+
 //清除所有规则
 func (p *PortTrafficStatistics) clearAll() error {
 	log.Info("清理所有iptables规则")
@@ -137,23 +154,23 @@ func (p *PortTrafficStatistics) clearAll() error {
 	return nil
 }
 
-func (p *PortTrafficStatistics)readStatistics () {
+func (p *PortTrafficStatistics) readStatistics() ([]*Stat, error) {
 	log.Infof("解析流量数据")
-	data,err:=p.chainList("filter", "INPUT")
+	data, err := p.chainList("filter", "INPUT")
 	if err != nil {
 		log.Error(err)
-		return
+		return nil, err
 	}
-	stats,err:=p.ParseStat(data)
+	stats, err := p.ParseStat(data)
 	if err != nil {
 		log.Error(err)
-		return
+		return nil, err
 	}
-	for _,stst:=range stats{
-		log.Infof("%+v",stst)
+	for _, stst := range stats {
+		log.Infof("%+v", stst)
 	}
+	return stats, nil
 }
-
 
 func (p *PortTrafficStatistics) chainList(table, chain string) (string, error) {
 	iptablePath, err := exec.LookPath("iptables")
@@ -168,10 +185,12 @@ func (p *PortTrafficStatistics) chainList(table, chain string) (string, error) {
 	out, err := c.Output()
 	return string(out), err
 }
+
 var chainNameRe = regexp.MustCompile(`^Chain\s+(\S+)`)
 var fieldsHeaderRe = regexp.MustCompile(`^\s*pkts\s+bytes\s+`)
+
 // pkts      bytes target     prot opt in     out     source               destination
-func (p *PortTrafficStatistics) ParseStat(data string) ( []*Stat,  error) {
+func (p *PortTrafficStatistics) ParseStat(data string) ([]*Stat, error) {
 	stats := make([]*Stat, 0)
 	lines := strings.Split(data, "\n")
 	if len(lines) < 3 {
@@ -193,7 +212,7 @@ func (p *PortTrafficStatistics) ParseStat(data string) ( []*Stat,  error) {
 		}
 		lStat := new(Stat)
 		// Convert the fields that are not plain strings
-		lStat.Packets, err= strconv.ParseUint(stat[0], 0, 64)
+		lStat.Packets, err = strconv.ParseUint(stat[0], 0, 64)
 		if err != nil {
 			log.Errorf("annot parse iptables list information %+v", stat)
 			continue
@@ -210,7 +229,7 @@ func (p *PortTrafficStatistics) ParseStat(data string) ( []*Stat,  error) {
 			continue
 		}
 		lStat.Port = dports[1]
-		stats=append(stats,lStat)
+		stats = append(stats, lStat)
 	}
-	return stats,nil
+	return stats, nil
 }
