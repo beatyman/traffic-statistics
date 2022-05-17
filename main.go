@@ -145,7 +145,9 @@ func (p *PortTrafficStatistics)readStatistics () {
 		log.Error(err)
 		return
 	}
-	log.Infof("%+v",stats)
+	for _,stst:=range stats{
+		log.Infof("%+v",stst)
+	}
 }
 
 
