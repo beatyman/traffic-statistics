@@ -3,9 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"github.com/coreos/go-iptables/iptables"
-	"net"
+	log "github.com/sirupsen/logrus"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -231,11 +230,35 @@ func (p *PortTrafficStatistics) ParseStat(stat []string) (parsed Stat, err error
 	if len(matchString) == 0 {
 		dports = [2]int{1, 65535}
 	} else {
-		dports, err = parseRuleDPorts(r)
+		dports, err = parseRuleDPorts(stat[9])
 		if err != nil {
 			return  parsed,err
 		}
 	}
 	parsed.Port=strconv.Itoa(dports[1])
 	return parsed, nil
+}
+func parseRuleDPorts(r string) ([2]int, error) {
+	match := iptablesRuleDPortRegexp.FindStringSubmatch(r)
+	dports := [2]int{0, 0}
+	for i, name := range iptablesRuleDPortRegexp.SubexpNames() {
+		var err error
+		switch name {
+		case "minPort":
+			dports[0], err = strconv.Atoi(match[i])
+			if err != nil {
+				return dports, fmt.Errorf("rule '%s' has invalid destination %s specification '%s'", r, name, match[i])
+			}
+		case "maxPort":
+			dports[1], _ = strconv.Atoi(match[i])
+			if err != nil {
+				dports[1] = 0
+			}
+		default:
+		}
+	}
+	if dports[1] == 0 {
+		dports[1] = dports[0]
+	}
+	return dports, nil
 }
