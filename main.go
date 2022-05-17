@@ -175,7 +175,7 @@ const measurement = "iptables"
 var errParse = errors.New("Cannot parse iptables list information")
 var chainNameRe = regexp.MustCompile(`^Chain\s+(\S+)`)
 var fieldsHeaderRe = regexp.MustCompile(`^\s*pkts\s+bytes\s+target`)
-var valuesRe = regexp.MustCompile(`^\s*(\d+)\s+(\d+)\s+(\w+).*?/\*\s*(.+?)\s*\*/\s*`)
+var valuesRe = regexp.MustCompile(`^\s*([0-9]+)\s+([0-9]+)\s+.*?(/\*\s(.*)\s\*/)?$`)
 
 
 func (p *PortTrafficStatistics) parse(data string) error {
