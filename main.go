@@ -138,10 +138,18 @@ func (p *PortTrafficStatistics)readStatistics () {
 	}
 	iptablesObject, err := iptables.New()
 	if err != nil {
+		log.Error(err)
 		return
 	}
+	data1,err:=iptablesObject.Stats("filter", "INPUT")
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	log.Infof("%+v ",data1)
 	stats, err := iptablesObject.StructuredStats("filter", "INPUT")
 	if err != nil {
+		log.Error(err)
 		return
 	}
 	log.Infof("%+v ",stats)
