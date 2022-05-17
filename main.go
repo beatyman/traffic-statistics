@@ -136,6 +136,8 @@ func (p *PortTrafficStatistics)readStatistics () {
 	if err != nil {
 		return
 	}
+
+	log.Info("=========================================================================")
 	iptablesObject, err := iptables.New()
 	if err != nil {
 		log.Error(err)
@@ -153,6 +155,7 @@ func (p *PortTrafficStatistics)readStatistics () {
 		return
 	}
 	log.Infof("%+v ",stats)
+	log.Info("=========================================================================")
 }
 
 
@@ -197,6 +200,7 @@ func (p *PortTrafficStatistics) parse(data string) error {
 			log.Infof("%+v",matches)
 			continue
 		}
+		log.Info("=========================================================================")
 		pkts := matches[1]
 		bytes := matches[2]
 		target := matches[3]
