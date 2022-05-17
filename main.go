@@ -5,6 +5,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/coreos/go-iptables/iptables"
+	"net"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -32,6 +33,20 @@ func main() {
 		log.Error(err)
 		return
 	}*/
+}
+
+// Stat represents a structured statistic entry.
+type Stat struct {
+	Packets     uint64     `json:"pkts"`
+	Bytes       uint64     `json:"bytes"`
+	Target      string     `json:"target"`
+	Protocol    string     `json:"prot"`
+	Opt         string     `json:"opt"`
+	Input       string     `json:"in"`
+	Output      string     `json:"out"`
+	Source      *net.IPNet `json:"source"`
+	Destination *net.IPNet `json:"destination"`
+	Options     string     `json:"options"`
 }
 
 type PortTrafficStatistics struct {
@@ -138,8 +153,6 @@ func (p *PortTrafficStatistics)readStatistics () {
 	if err != nil {
 		return
 	}
-	parseIptablesRule(data)
-	log.Info("22222 =========================================================================")
 	iptablesObject, err := iptables.New()
 	if err != nil {
 		log.Error(err)
@@ -151,13 +164,14 @@ func (p *PortTrafficStatistics)readStatistics () {
 		return
 	}
 	log.Infof("%+v ",data1)
-	stats, err := iptablesObject.StructuredStats("filter", "INPUT")
-	if err != nil {
-		log.Error(err)
-		return
+	for _,d:=range data1{
+		sts,err:=p.ParseStat(d)
+		if err != nil {
+			log.Error(err)
+		}else {
+			log.Infof("%+v",sts)
+		}
 	}
-	log.Infof("%+v ",stats)
-	log.Info("33333 =========================================================================")
 }
 
 
@@ -270,4 +284,39 @@ func parseRule(r, target, protocol, source string) error {
 	}
 	log.Infof("Target: %+v , Protocol: %+v ,Source: %+v Dports: %+v ",target,protocol,source,dports)
 	return  nil
+}
+
+func (p *PortTrafficStatistics) ParseStat(stat []string) (parsed Stat, err error) {
+	// For forward-compatibility, expect at least 10 fields in the stat
+	if len(stat) < 10 {
+		return parsed, fmt.Errorf("stat contained fewer fields than expected")
+	}
+
+	// Convert the fields that are not plain strings
+	parsed.Packets, err = strconv.ParseUint(stat[0], 0, 64)
+	if err != nil {
+		return parsed, fmt.Errorf(err.Error(), "could not parse packets")
+	}
+	parsed.Bytes, err = strconv.ParseUint(stat[1], 0, 64)
+	if err != nil {
+		return parsed, fmt.Errorf(err.Error(), "could not parse bytes")
+	}
+/*	_, parsed.Source, err = net.ParseCIDR(stat[7])
+	if err != nil {
+		return parsed, fmt.Errorf(err.Error(), "could not parse source")
+	}
+	_, parsed.Destination, err = net.ParseCIDR(stat[8])
+	if err != nil {
+		return parsed, fmt.Errorf(err.Error(), "could not parse destination")
+	}*/
+
+	// Put the fields that are strings
+	parsed.Target = stat[2]
+	parsed.Protocol = stat[3]
+	parsed.Opt = stat[4]
+	parsed.Input = stat[5]
+	parsed.Output = stat[6]
+	parsed.Options = stat[9]
+
+	return parsed, nil
 }
