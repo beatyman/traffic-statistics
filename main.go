@@ -213,19 +213,8 @@ func (p *PortTrafficStatistics) parse(data string) error {
 		return errParse
 	}
 	for _, line := range lines[2:] {
-		log.Infof("%+v",line)
-		matches := valuesRe.FindStringSubmatch(line)
-		if len(matches) != 5 {
-			log.Infof("%+v",matches)
-			continue
-		}
-		log.Infof("1111: %+v",matches)
-/*		log.Info("=========================================================================")
-		pkts := matches[1]
-		bytes := matches[2]
-		target := matches[3]
-		comment := matches[4]
-		log.Infof("%+v, pkts: %+v , bytes: %+v , target: %+v, comment:%+v ",matches[0],pkts,bytes,target,comment)*/
+		fields:=strings.Fields(line)
+		log.Infof("%+v ,len: %+v",fields,len(fields))
 	}
 	return nil
 }
@@ -285,8 +274,9 @@ func parseRule(r, target, protocol, source string) error {
 	log.Infof("Target: %+v , Protocol: %+v ,Source: %+v Dports: %+v ",target,protocol,source,dports)
 	return  nil
 }
-
+// pkts      bytes target     prot opt in     out     source               destination
 func (p *PortTrafficStatistics) ParseStat(stat []string) (parsed Stat, err error) {
+
 	// For forward-compatibility, expect at least 10 fields in the stat
 	if len(stat) < 10 {
 		return parsed, fmt.Errorf("stat contained fewer fields than expected")
