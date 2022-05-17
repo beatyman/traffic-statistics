@@ -174,6 +174,7 @@ func (p *PortTrafficStatistics) parse(data string) error {
 	for _, line := range lines[2:] {
 		matches := valuesRe.FindStringSubmatch(line)
 		if len(matches) != 5 {
+			log.Infof("%+v",matches)
 			continue
 		}
 		pkts := matches[1]
