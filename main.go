@@ -14,7 +14,7 @@ import (
 func main() {
 	tool := PortTrafficStatistics{}
 	tool.readStatistics()
-	VN("enp8s0")
+	log.Infof("%+v",VN("enp8s0"))
 	time.Sleep(time.Minute)
 	tool.readStatistics()
 	time.Sleep(time.Minute)
