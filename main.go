@@ -163,6 +163,7 @@ func (p *PortTrafficStatistics) chainList(table, chain string) (string, error) {
 	}
 	var args []string
 	name := iptablePath
+	args = append(args, "-w", "5")
 	args = append(args, "-nvL", chain, "-t", table, "-x")
 	c := exec.Command(name, args...)
 	out, err := c.Output()
