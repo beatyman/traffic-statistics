@@ -1,14 +1,23 @@
 package main
 
 import (
+	"errors"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
+	"regexp"
+	"strings"
+	"time"
 )
 //https://github.com/seal0207/Port-traffic-statistics/blob/main/Port-.sh
 //https://github.com/dominikh/simple-router/blob/92e945cdbf054d28b31f3906423ff08265ca4837/traffic/statistics.go
 func main() {
 	tool := PortTrafficStatistics{}
-	if err := tool.addPort([]string{"2348", "8086"}); err != nil {
+	tool.readStatistics()
+	time.Sleep(time.Minute)
+	tool.readStatistics()
+	time.Sleep(time.Minute)
+	tool.readStatistics()
+/*	if err := tool.addPort([]string{"2348", "8086"}); err != nil {
 		log.Error(err)
 		return
 	}
@@ -19,7 +28,7 @@ func main() {
 	if err := tool.clearAll(); err != nil {
 		log.Error(err)
 		return
-	}
+	}*/
 }
 
 type PortTrafficStatistics struct {
@@ -116,5 +125,62 @@ func (p *PortTrafficStatistics) clearAll() error {
 }
 
 func (p *PortTrafficStatistics)readStatistics () {
+	log.Infof("解析流量数据")
+	data,err:=p.chainList("filter", "INPUT")
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	err = p.parse(data)
+	if err != nil {
+		return
+	}
+}
 
+
+func (p *PortTrafficStatistics) chainList(table, chain string) (string, error) {
+	iptablePath, err := exec.LookPath("iptables")
+	if err != nil {
+		return "", err
+	}
+	var args []string
+	name := iptablePath
+	args = append(args, "-nvL", chain, "-t", table, "-x")
+	c := exec.Command(name, args...)
+	out, err := c.Output()
+	return string(out), err
+}
+
+const measurement = "iptables"
+
+var errParse = errors.New("Cannot parse iptables list information")
+var chainNameRe = regexp.MustCompile(`^Chain\s+(\S+)`)
+var fieldsHeaderRe = regexp.MustCompile(`^\s*pkts\s+bytes\s+target`)
+var valuesRe = regexp.MustCompile(`^\s*(\d+)\s+(\d+)\s+(\w+).*?/\*\s*(.+?)\s*\*/\s*`)
+
+
+func (p *PortTrafficStatistics) parse(data string) error {
+	lines := strings.Split(data, "\n")
+	if len(lines) < 3 {
+		return nil
+	}
+	mchain := chainNameRe.FindStringSubmatch(lines[0])
+	if mchain == nil {
+		return errParse
+	}
+	if !fieldsHeaderRe.MatchString(lines[1]) {
+		return errParse
+	}
+	for _, line := range lines[2:] {
+		matches := valuesRe.FindStringSubmatch(line)
+		if len(matches) != 5 {
+			continue
+		}
+		pkts := matches[1]
+		bytes := matches[2]
+		target := matches[3]
+		comment := matches[4]
+		log.Infof("%+v, pkts: %+v , bytes: %+v , target: %+v, comment:%+v ",matches[0],pkts,bytes,target,comment)
+	}
+	return nil
 }
