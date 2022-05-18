@@ -363,7 +363,7 @@ func (p *PortTrafficStatistics) checkout(port []string) error {
 		}
 		sch.Dir=dports[0]
 		sch.Port=dports[1]
-		log.Infof("%+v ,len : %+v", stat, len(stat))
+		log.Infof("%+v", sch)
 	}
 	return nil
 }
