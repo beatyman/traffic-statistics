@@ -339,11 +339,11 @@ func (p *PortTrafficStatistics) checkout(port []string) error {
 	mchain := chainNameRe.FindStringSubmatch(lines[0])
 	if mchain == nil {
 		log.Error("2 annot parse iptables list information")
-		return fmt.Errorf("annot parse iptables list information %+v", lines)
+		return fmt.Errorf("annot parse iptables list information %+v", lines[0])
 	}
 	if !fieldsPortHeaderRe.MatchString(lines[1]) {
 		log.Error("3 annot parse iptables list information")
-		return fmt.Errorf("annot parse iptables list information %+v", lines)
+		return fmt.Errorf("annot parse iptables list information %+v", lines[1])
 	}
 	for _, line := range lines[2:] {
 		stat := strings.Fields(line)
