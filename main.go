@@ -346,7 +346,7 @@ func (p *PortTrafficStatistics) checkout(port []string) error {
 	}
 	for _, line := range lines[2:] {
 		stat := strings.Fields(line)
-		log.Info("%+v ,len : %+v",stat,len(stat))
+		log.Infof("%+v ,len : %+v",stat,len(stat))
 	}
 	return nil
 }
