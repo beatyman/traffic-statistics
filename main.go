@@ -67,6 +67,7 @@ func getAgentStat(now time.Time) {
 	}
 	bytesNet, _ := json.Marshal(report)
 	log.Infof("%+v", string(bytesNet))
+	tool.checkout([]string{"4001"})
 }
 //安装流量收集工具
 func init() {
@@ -311,4 +312,37 @@ func (p *PortTrafficStatistics) ParseStat(data string) ([]*Stat, error) {
 		stats = append(stats, lStat)
 	}
 	return stats, nil
+}
+
+// iptables -t filter -L INPUT  --line-number
+var fieldsPortHeaderRe = regexp.MustCompile(`^\s*pkts\s+bytes\s+`)
+func (p *PortTrafficStatistics) checkout(port []string) error {
+	iptablePath, err := exec.LookPath("iptables")
+	if err != nil {
+		return err
+	}
+	var args []string
+	name := iptablePath
+	args = append(args, "-t", "filter", "-L", "INPUT", "--line-number")
+	c := exec.Command(name, args...)
+	out, err := c.Output()
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(string(out), "\n")
+	if len(lines) < 3 {
+		return  fmt.Errorf("annot parse iptables list information %+v", lines)
+	}
+	mchain := chainNameRe.FindStringSubmatch(lines[0])
+	if mchain == nil {
+		return fmt.Errorf("annot parse iptables list information %+v", lines)
+	}
+	if !fieldsPortHeaderRe.MatchString(lines[1]) {
+		return fmt.Errorf("annot parse iptables list information %+v", lines)
+	}
+	for _, line := range lines[2:] {
+		stat := strings.Fields(line)
+		log.Info("%+v ,len : %+v",stat,len(stat))
+	}
+	return nil
 }
