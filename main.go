@@ -315,7 +315,7 @@ func (p *PortTrafficStatistics) ParseStat(data string) ([]*Stat, error) {
 }
 
 // iptables -t filter -L INPUT  --line-number
-var fieldsPortHeaderRe = regexp.MustCompile(`^\s*pkts\s+bytes\s+`)
+var fieldsPortHeaderRe = regexp.MustCompile(`^\s*target\s+prot\s+`)
 func (p *PortTrafficStatistics) checkout(port []string) error {
 	iptablePath, err := exec.LookPath("iptables")
 	if err != nil {
