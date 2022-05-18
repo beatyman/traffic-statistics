@@ -66,7 +66,7 @@ func getAgentStat(now time.Time) {
 	}
 	bytesNet, _ := json.Marshal(report)
 	log.Infof("%+v", string(bytesNet))
-	tool.checkout([]string{"4001"})
+	tool.checkout([]string{"4001", "9001"})
 }
 
 //安装流量收集工具
@@ -314,9 +314,7 @@ func (p *PortTrafficStatistics) ParseStat(data string) ([]*Stat, error) {
 }
 
 // iptables -t filter -L INPUT  --line-number
-var fieldsPortHeaderRe = regexp.MustCompile(`^\s*target\s+prot\s+`)
-
-func (p *PortTrafficStatistics) checkout(port []string) error {
+func (p *PortTrafficStatistics) checkout(portlist []string) error {
 	iptablePath, err := exec.LookPath("iptables")
 	if err != nil {
 		log.Error(err)
@@ -336,34 +334,45 @@ func (p *PortTrafficStatistics) checkout(port []string) error {
 		log.Error("1 annot parse iptables list information")
 		return fmt.Errorf("annot parse iptables list information %+v", lines)
 	}
-	for i, l := range lines {
-		log.Infof(" %+v ,%+v", i, l)
-	}
 	mchain := chainNameRe.FindStringSubmatch(lines[0])
 	if mchain == nil {
 		log.Error("2 annot parse iptables list information")
 		return fmt.Errorf("annot parse iptables list information %+v", lines[0])
 	}
-	type Schema struct {
+	type Rule struct {
 		Protocol string `json:"protocol"`
 		Port     string `json:"port"`
 		Dir      string `json:"dir"`
 	}
+	ruleMap := make(map[string][]Rule, 0)
 	for _, line := range lines[2:] {
 		stat := strings.Fields(line)
 		if len(stat) != 7 {
 			continue
 		}
-		sch:=Schema{}
-		sch.Protocol=stat[1]
+		sch := Rule{}
+		sch.Protocol = stat[1]
 		dports := strings.Split(stat[6], ":")
 		if len(dports) != 2 {
 			log.Errorf("annot parse iptables list information %+v", stat)
 			continue
 		}
-		sch.Dir=dports[0]
-		sch.Port=dports[1]
-		log.Infof("%+v", sch)
+		sch.Dir = dports[0]
+		sch.Port = dports[1]
+		if _, ok := ruleMap[sch.Port]; !ok {
+			ruleMap[sch.Port] = make([]Rule, 0)
+		}
+		ruleMap[sch.Port] = append(ruleMap[sch.Port], sch)
+	}
+	for _, port := range portlist {
+		if _, ok := ruleMap[port]; ok {
+			if len(ruleMap[port]) != 4 {
+				p.deletePort([]string{port})
+				p.addPort([]string{port})
+			}
+		} else {
+			p.addPort([]string{port})
+		}
 	}
 	return nil
 }
