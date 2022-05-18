@@ -336,7 +336,9 @@ func (p *PortTrafficStatistics) checkout(port []string) error {
 		log.Error("1 annot parse iptables list information")
 		return  fmt.Errorf("annot parse iptables list information %+v", lines)
 	}
-	log.Infof("%+v",lines)
+	for i,l:=range lines{
+		log.Infof(" %+v ,%+v",i,l)
+	}
 	mchain := chainNameRe.FindStringSubmatch(lines[0])
 	if mchain == nil {
 		log.Error("2 annot parse iptables list information")
