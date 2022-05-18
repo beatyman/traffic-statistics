@@ -344,10 +344,6 @@ func (p *PortTrafficStatistics) checkout(port []string) error {
 		log.Error("2 annot parse iptables list information")
 		return fmt.Errorf("annot parse iptables list information %+v", lines[0])
 	}
-	if !fieldsPortHeaderRe.MatchString(lines[1]) {
-		log.Error("3 annot parse iptables list information")
-		return fmt.Errorf("annot parse iptables list information %+v", lines[1])
-	}
 	for _, line := range lines[2:] {
 		stat := strings.Fields(line)
 		log.Info("%+v ,len : %+v",stat,len(stat))
