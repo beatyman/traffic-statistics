@@ -319,6 +319,7 @@ var fieldsPortHeaderRe = regexp.MustCompile(`^\s*target\s+prot\s+`)
 func (p *PortTrafficStatistics) checkout(port []string) error {
 	iptablePath, err := exec.LookPath("iptables")
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 	var args []string
@@ -327,17 +328,21 @@ func (p *PortTrafficStatistics) checkout(port []string) error {
 	c := exec.Command(name, args...)
 	out, err := c.Output()
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 	lines := strings.Split(string(out), "\n")
 	if len(lines) < 3 {
+		log.Error("1 annot parse iptables list information")
 		return  fmt.Errorf("annot parse iptables list information %+v", lines)
 	}
 	mchain := chainNameRe.FindStringSubmatch(lines[0])
 	if mchain == nil {
+		log.Error("2 annot parse iptables list information")
 		return fmt.Errorf("annot parse iptables list information %+v", lines)
 	}
 	if !fieldsPortHeaderRe.MatchString(lines[1]) {
+		log.Error("3 annot parse iptables list information")
 		return fmt.Errorf("annot parse iptables list information %+v", lines)
 	}
 	for _, line := range lines[2:] {
