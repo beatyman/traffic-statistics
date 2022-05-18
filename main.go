@@ -320,52 +320,60 @@ func (p *PortTrafficStatistics) checkout(portlist []string) error {
 		log.Error(err)
 		return err
 	}
-	var args []string
-	name := iptablePath
-	args = append(args, "-t", "filter", "-L", "INPUT", "--line-number")
-	c := exec.Command(name, args...)
-	out, err := c.Output()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	lines := strings.Split(string(out), "\n")
-	if len(lines) < 3 {
-		log.Error("1 annot parse iptables list information")
-		return fmt.Errorf("annot parse iptables list information %+v", lines)
-	}
-	mchain := chainNameRe.FindStringSubmatch(lines[0])
-	if mchain == nil {
-		log.Error("2 annot parse iptables list information")
-		return fmt.Errorf("annot parse iptables list information %+v", lines[0])
-	}
 	type Rule struct {
 		Protocol string `json:"protocol"`
 		Port     string `json:"port"`
 		Dir      string `json:"dir"`
 	}
 	ruleMap := make(map[string][]Rule, 0)
-	for _, line := range lines[2:] {
-		stat := strings.Fields(line)
-		if len(stat) != 7 {
-			continue
+
+	checkFun:= func(chain string) {
+		var args []string
+		name := iptablePath
+		args = append(args, "-t", "filter", "-L", chain, "--line-number")
+		c := exec.Command(name, args...)
+		out, err := c.Output()
+		if err != nil {
+			log.Error(err)
+			return
 		}
-		sch := Rule{}
-		sch.Protocol = stat[1]
-		dports := strings.Split(stat[6], ":")
-		if len(dports) != 2 {
-			log.Errorf("annot parse iptables list information %+v", stat)
-			continue
+		lines := strings.Split(string(out), "\n")
+		if len(lines) < 3 {
+			log.Error("1 annot parse iptables list information")
+			return
 		}
-		sch.Dir = dports[0]
-		sch.Port = dports[1]
-		if _, ok := ruleMap[sch.Port]; !ok {
-			ruleMap[sch.Port] = make([]Rule, 0)
+		mchain := chainNameRe.FindStringSubmatch(lines[0])
+		if mchain == nil {
+			log.Error("2 annot parse iptables list information")
+			return
 		}
-		ruleMap[sch.Port] = append(ruleMap[sch.Port], sch)
+		for _, line := range lines[2:] {
+			stat := strings.Fields(line)
+			if len(stat) != 7 {
+				continue
+			}
+			sch := Rule{}
+			sch.Protocol = stat[1]
+			dports := strings.Split(stat[6], ":")
+			if len(dports) != 2 {
+				log.Errorf("annot parse iptables list information %+v", stat)
+				continue
+			}
+			sch.Dir = dports[0]
+			sch.Port = dports[1]
+			if _, ok := ruleMap[sch.Port]; !ok {
+				ruleMap[sch.Port] = make([]Rule, 0)
+			}
+			ruleMap[sch.Port] = append(ruleMap[sch.Port], sch)
+		}
 	}
+
+	checkFun("INPUT")
+	checkFun("OUTPUT")
+
 	for _, port := range portlist {
 		if _, ok := ruleMap[port]; ok {
+			log.Infof("%+v",ruleMap[port])
 			if len(ruleMap[port]) != 4 {
 				p.deletePort([]string{port})
 				p.addPort([]string{port})
