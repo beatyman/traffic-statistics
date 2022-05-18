@@ -28,7 +28,6 @@ type ReportNetStatistics struct {
 	TimeStamp        int64      `json:"time_stamp"`
 }
 
-
 func Startup(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Info("health daemon startup")
@@ -62,16 +61,17 @@ func getAgentStat(now time.Time) {
 		InterfaceTraffic: []VNResult{
 			data,
 		},
-		Version: "0.0.0",
+		Version:   "0.0.0",
 		TimeStamp: time.Now().Unix(),
 	}
 	bytesNet, _ := json.Marshal(report)
 	log.Infof("%+v", string(bytesNet))
 	tool.checkout([]string{"4001"})
 }
+
 //安装流量收集工具
 func init() {
-	if err:=checkVnstat();err!=nil{
+	if err := checkVnstat(); err != nil {
 		if err := aptUpdate(); err != nil {
 			log.Error(err)
 		}
@@ -80,7 +80,6 @@ func init() {
 		}
 	}
 }
-
 
 func aptInstall(pkg string) error {
 	cmd := exec.Command("apt-get", "install", "-y", pkg)
@@ -120,7 +119,7 @@ func main() {
 	wg := &sync.WaitGroup{}
 	log.Info("++++++++++++++++++++++++++++++running++++++++++++++++++++++++++++++")
 	wg.Add(3)
-	agentCtx:=context.TODO()
+	agentCtx := context.TODO()
 	go Startup(agentCtx, wg)
 	go func() {
 		sigs := make(chan os.Signal, 1)
@@ -316,6 +315,7 @@ func (p *PortTrafficStatistics) ParseStat(data string) ([]*Stat, error) {
 
 // iptables -t filter -L INPUT  --line-number
 var fieldsPortHeaderRe = regexp.MustCompile(`^\s*target\s+prot\s+`)
+
 func (p *PortTrafficStatistics) checkout(port []string) error {
 	iptablePath, err := exec.LookPath("iptables")
 	if err != nil {
@@ -334,19 +334,36 @@ func (p *PortTrafficStatistics) checkout(port []string) error {
 	lines := strings.Split(string(out), "\n")
 	if len(lines) < 3 {
 		log.Error("1 annot parse iptables list information")
-		return  fmt.Errorf("annot parse iptables list information %+v", lines)
+		return fmt.Errorf("annot parse iptables list information %+v", lines)
 	}
-	for i,l:=range lines{
-		log.Infof(" %+v ,%+v",i,l)
+	for i, l := range lines {
+		log.Infof(" %+v ,%+v", i, l)
 	}
 	mchain := chainNameRe.FindStringSubmatch(lines[0])
 	if mchain == nil {
 		log.Error("2 annot parse iptables list information")
 		return fmt.Errorf("annot parse iptables list information %+v", lines[0])
 	}
+	type Schema struct {
+		Protocol string `json:"protocol"`
+		Port     string `json:"port"`
+		Dir      string `json:"dir"`
+	}
 	for _, line := range lines[2:] {
 		stat := strings.Fields(line)
-		log.Infof("%+v ,len : %+v",stat,len(stat))
+		if len(stat) != 7 {
+			continue
+		}
+		sch:=Schema{}
+		sch.Protocol=stat[1]
+		dports := strings.Split(stat[6], ":")
+		if len(dports) != 2 {
+			log.Errorf("annot parse iptables list information %+v", stat)
+			continue
+		}
+		sch.Dir=dports[0]
+		sch.Port=dports[1]
+		log.Infof("%+v ,len : %+v", stat, len(stat))
 	}
 	return nil
 }
