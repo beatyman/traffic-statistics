@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -14,13 +15,49 @@ import (
 	"time"
 )
 
-func main()  {
+type Login struct {
+	User     string `json:"user"`
+	Password string `json:"password"`
+}
+
+func main() {
 	router := gin.Default()
+	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+			param.ClientIP,
+			param.TimeStamp.Format(time.RFC1123),
+			param.Method,
+			param.Path,
+			param.Request.Proto,
+			param.StatusCode,
+			param.Latency,
+			param.Request.UserAgent(),
+			param.ErrorMessage,
+		)
+	}))
+	router.Use(gin.Recovery())
+	router.Use(Cors())
 	router.Use(AKSKAuth())
+	// post  {"user": "manu", "password": "123"}
 	router.POST("/post", func(c *gin.Context) {
-		fmt.Printf("%+v",c.Request.Header)
-		c.JSON(http.StatusOK,c.Request.Header)
+		var json Login
+		if err := c.ShouldBindJSON(&json); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if json.User != "manu" || json.Password != "123" {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "unauthorized"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": fmt.Sprintf(" user: %s are logged in ,password: %s", json.User, json.Password)})
 	})
+	// post?user=manu&password=123
+	router.GET("/post", func(c *gin.Context) {
+		user := c.Query("user")
+		password := c.Query("password") // shortcut for c.Request.URL.Query().Get("lastname")
+		c.String(http.StatusOK, " user: %s are logged in ,password: %s", user, password)
+	})
+
 	router.Run(":3004")
 }
 /*
@@ -37,7 +74,7 @@ User-Agent:[GRequests/0.10]]
 
 [GIN] 2022/05/17 - 15:56:08 | 200 |            0s |       127.0.0.1 | POST     "/post"
 
- */
+*/
 
 var (
 	AK = "017194e9718f07feefc4b03422d8be5df654bafc623251480f7d760d1209b4ca39"
@@ -45,7 +82,7 @@ var (
 )
 
 func getSecKec(ak string) string {
-	if strings.Compare(AK,ak)==0{
+	if strings.Compare(AK, ak) == 0 {
 		return SK
 	}
 	return ""
@@ -66,7 +103,9 @@ func AKSKAuth() gin.HandlerFunc {
 			abort(c, "header missed: AccessKey|Signature|TimeStamp")
 			return
 		}
-
+		log.Infof("client:  AccessKey: %+v",ak)
+		log.Infof("client:  Signature: %+v",sign)
+		log.Infof("client:  TimeStamp: %+v",timeStamp)
 		//check time
 		iTime, err = strconv.ParseInt(timeStamp, 10, 64)
 		if err != nil {
@@ -78,7 +117,6 @@ func AKSKAuth() gin.HandlerFunc {
 			abort(c, "timestamp error")
 			return
 		}
-
 		//check signature
 		sk = getSecKec(ak)
 		if sk == "" {
@@ -94,6 +132,7 @@ func AKSKAuth() gin.HandlerFunc {
 		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
 
 		serverSign = generateSign(c.Request.Method, formatURLPath(c.Request.URL.Path), c.Request.URL.RawQuery, ak, timeStamp, sk, requestBody)
+		log.Infof("server Signature: %+v ",serverSign)
 		if serverSign != sign {
 			abort(c, "signature error")
 			return
@@ -134,7 +173,6 @@ func abort(c *gin.Context, reason string) {
 	CreateResponse(c, AuthFailedErrorCode, reason)
 	return
 }
-
 
 const (
 	SuccessCode = iota
@@ -195,4 +233,22 @@ func CreateResponse(c *gin.Context, code int, data interface{}) {
 		http.StatusOK,
 		response,
 	)
+}
+
+func Cors() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		method := c.Request.Method
+		origin := c.Request.Header.Get("Origin")
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", "*")  // 可将将 * 替换为指定的域名
+			c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")
+			c.Header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
+			c.Header("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Cache-Control, Content-Language, Content-Type")
+			c.Header("Access-Control-Allow-Credentials", "true")
+		}
+		if method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+		}
+		c.Next()
+	}
 }

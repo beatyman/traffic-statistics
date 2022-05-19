@@ -14,21 +14,41 @@ import (
 )
 
 func main() {
+	get()
+	post()
+}
+
+func get()  {
+	//http://127.0.0.1:3004/post?user=manu&password=123
+	option := SdAuthRequestOption()
+	option.Params = map[string]string{
+		"user":     "manu",
+		"password": "123",
+	}
+	option.RequestTimeout = 2 * time.Second
+	resp, err := grequests.Get("http://127.0.0.1:3004/post", option)
+	if err != nil {
+		fmt.Printf("%+\n", err.Error())
+		return
+	}
+	fmt.Printf("%+v\n", resp.String())
+}
+func post()  {
+	// {"user": "manu", "password": "123"}
 	option := SdAuthRequestOption()
 	option.JSON = map[string]interface{}{
-		"name":   "zhangxin",
-		"ip":     "127.0.0.1",
-		"port":   "10086",
-		"weight": 1000,
+		"user":     "manu",
+		"password": "123",
 	}
 	option.RequestTimeout = 2 * time.Second
 	resp, err := grequests.Post("http://127.0.0.1:3004/post", option)
-	if err!=nil{
-		fmt.Printf("%+\n",err.Error())
+	if err != nil {
+		fmt.Printf("%+\n", err.Error())
 		return
 	}
-	fmt.Printf("%+v\n",resp.String())
+	fmt.Printf("%+v\n", resp.String())
 }
+
 
 var (
 	AK = "017194e9718f07feefc4b03422d8be5df654bafc623251480f7d760d1209b4ca39"
