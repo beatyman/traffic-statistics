@@ -14,8 +14,22 @@ import (
 )
 
 func main() {
-	get()
+	//get()
 	post()
+	//getIpfsSwarmPeers()
+}
+
+//curl -X POST "http://127.0.0.1:5001/api/v0/swarm/peers?verbose=<value>&streams=<value>&latency=<value>&direction=<value>"
+func getIpfsSwarmPeers()  {
+	// {"user": "manu", "password": "123"}
+	option := SdAuthRequestOption()
+	option.RequestTimeout = 2 * time.Second
+	resp, err := grequests.Post("http://127.0.0.1:5001/api/v0/swarm/peers", option)
+	if err != nil {
+		fmt.Printf("%+\n", err.Error())
+		return
+	}
+	fmt.Printf("%+v\n", resp.String())
 }
 
 func get()  {
@@ -43,7 +57,7 @@ func post()  {
 	option.RequestTimeout = 2 * time.Second
 	resp, err := grequests.Post("http://127.0.0.1:3004/post", option)
 	if err != nil {
-		fmt.Printf("%+\n", err.Error())
+		fmt.Printf("%+v\n", err.Error())
 		return
 	}
 	fmt.Printf("%+v\n", resp.String())
@@ -109,7 +123,10 @@ func sha256byteArr(in []byte) string {
 }
 
 func generateSign(method, url, query, ak, timestamp, sk string, requestBody []byte) string {
-	return hmacSha256(fmt.Sprintf(`%s\n%s\n%s\n%s\n%s\n%s`, method, url, query, ak, timestamp, sha256byteArr(requestBody)), sk)
+	fmt.Printf("before sign: %+v\n",fmt.Sprintf(`%s\n%s\n%s\n%s\n%s\n%s`, method, url, query, ak, timestamp, sha256byteArr(requestBody)))
+	sign:=hmacSha256(fmt.Sprintf(`%s\n%s\n%s\n%s\n%s\n%s`, method, url, query, ak, timestamp, sha256byteArr(requestBody)), sk)
+	fmt.Printf("sign: %+v\n", sign)
+	return sign
 }
 
 func hmacSha256(data string, secret string) string {
