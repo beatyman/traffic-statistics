@@ -4,6 +4,8 @@ go 1.17
 
 require (
 	github.com/gin-gonic/gin v1.7.7
+	github.com/ipfs/go-cid v0.1.0
+	github.com/ipfs/ipfs-cluster v1.0.1
 	github.com/levigross/grequests v0.0.0-20190908174114-253788527a1a
 	github.com/pkg/errors v0.9.1
 	github.com/shirou/gopsutil/v3 v3.22.4
@@ -45,13 +47,11 @@ require (
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
-	github.com/ipfs/go-cid v0.1.0 // indirect
 	github.com/ipfs/go-ipfs-api v0.3.0 // indirect
 	github.com/ipfs/go-ipfs-files v0.1.1 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
 	github.com/ipfs/go-path v0.3.0 // indirect
-	github.com/ipfs/ipfs-cluster v1.0.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -153,4 +153,4 @@ require (
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
 
-replace hlm-ipfs/ipfs-clutser-go-sdk => github.com/hlm-ipfs/ipfs-clutser-go-sdk v0.0.0-20220525055621-3bb91a4c7df9
+replace hlm-ipfs/ipfs-clutser-go-sdk => github.com/hlm-ipfs/ipfs-clutser-go-sdk v0.0.0-20220525063417-c84e0e0342cf
