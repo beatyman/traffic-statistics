@@ -159,6 +159,8 @@ func sha256byteArr(in []byte) string {
 }
 
 func generateSign(method, url, query, ak, timestamp, sk string, requestBody []byte) string {
+	fmt.Println(sha256byteArr(requestBody))
+	fmt.Println(fmt.Sprintf(`%s\n%s\n%s\n%s\n%s\n%s`, method, url, query, ak, timestamp, sha256byteArr(requestBody)))
 	return hmacSha256(fmt.Sprintf(`%s\n%s\n%s\n%s\n%s\n%s`, method, url, query, ak, timestamp, sha256byteArr(requestBody)), sk)
 }
 

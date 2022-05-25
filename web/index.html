@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<!-- 引入 CDN Crypto.js 开始 AES加密 注意引入顺序 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<!-- 引入 CDN Crypto.js 结束 -->
+<script src="https://cdn.bootcdn.net/ajax/libs/axios/0.27.2/axios.js"></script>
+<script>
+    function GetByteArrayFromStringArray(parameter) {
+        for (var key in parameter) { // loop through properties
+
+            var mainbytesArray = [];
+            for (var i = 0; i < parameter[key].length; i++)
+                mainbytesArray.push(parameter[key].charCodeAt(i));
+        }
+        return mainbytesArray;
+
+    }
+    //https://cdnjs.com/libraries/crypto-js
+//https://javascript.hotexamples.com/zh/examples/crypto-js/-/SHA256/javascript-sha256-function-examples.html
+    const instance = axios.create({
+        baseURL: ' http://127.0.0.1:3004'
+    });
+    console.log(CryptoJS)
+    // 添加请求拦截器
+    instance.interceptors.request.use(function (config) {
+        // 在发送请求之前做些什么
+        const {method,url,query,data}=config
+        console.log(data)
+        timestamp = parseInt(new Date().getTime()/1000)
+        AK = "017194e9718f07feefc4b03422d8be5df654bafc623251480f7d760d1209b4ca39"
+        SK = "02595d553697305c7670dfd92628e5ff68080335265edf804aea4e6e8df5112464"
+        requestBody=CryptoJS.SHA256(JSON.stringify(data),{ asBytes: true }).toString()
+
+        console.log("1 ",  requestBody)
+        items=[method,url,query,AK,timestamp,requestBody]
+        var canonicalRequest = method.toUpperCase() + '\n' + // method
+            url + '\n' + // path
+            ''+ '\n' +
+          //  query + '\n' + // query params
+            AK + '\n' + // no idea why this needs to be here, but it fails without
+            timestamp + '\n' + // signed header list
+            requestBody; // hash of payload (empty string)
+        console.log(JSON.stringify(canonicalRequest))
+       // canonicalRequest="POST\\n/post\\n\\n017194e9718f07feefc4b03422d8be5df654bafc623251480f7d760d1209b4ca39\\n1652939262\\n4410f5ca33359c22ef00ae8b4085c48a26aee18c295188d2ad1bd2543b62f2fe"
+        console.log(Buffer.from(canonicalRequest).toString())
+
+        sign=CryptoJS.HmacSHA256(Buffer.from(canonicalRequest).toString(),SK,{ asBytes: true }).toString()
+        console.log("sign============= ",sign)
+        config.headers["AccessKey"]=AK
+        config.headers["Signature"]=sign
+        config.headers["TimeStamp"]=timestamp
+        console.log(config)
+        return config;
+    }, function (error) {
+        // 对请求错误做些什么
+        return Promise.reject(error);
+    });
+    //{"user": "manu", "password": "123"}
+        instance.post('/post', {
+            "user":     "manu",
+            "password": "123",
+        })
+        .then(function (response) {
+            console.log(response);
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+</script>
+
+</body>
+</html>

@@ -15,8 +15,8 @@ import (
 
 func main() {
 	//get()
-	post()
-	//getIpfsSwarmPeers()
+	//post()
+	getIpfsSwarmPeers()
 }
 
 //curl -X POST "http://127.0.0.1:5001/api/v0/swarm/peers?verbose=<value>&streams=<value>&latency=<value>&direction=<value>"
@@ -114,6 +114,7 @@ func beforeRequestFuncWithKey(req *http.Request, ak, sk string) error {
 	return nil
 }
 func sha256byteArr(in []byte) string {
+	fmt.Println(string(in))
 	if in == nil || len(in) == 0 {
 		return ""
 	}
@@ -123,6 +124,7 @@ func sha256byteArr(in []byte) string {
 }
 
 func generateSign(method, url, query, ak, timestamp, sk string, requestBody []byte) string {
+	fmt.Println(sha256byteArr(requestBody))
 	fmt.Printf("before sign: %+v\n",fmt.Sprintf(`%s\n%s\n%s\n%s\n%s\n%s`, method, url, query, ak, timestamp, sha256byteArr(requestBody)))
 	sign:=hmacSha256(fmt.Sprintf(`%s\n%s\n%s\n%s\n%s\n%s`, method, url, query, ak, timestamp, sha256byteArr(requestBody)), sk)
 	fmt.Printf("sign: %+v\n", sign)
